@@ -1,0 +1,7 @@
+apiVersion: notifier.email.informer.io/v1
+kind: FailureInformer
+metadata:
+  name: failureinformer-sample
+spec:
+  # Add fields here
+  foo: bar
