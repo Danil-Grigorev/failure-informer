@@ -32,10 +32,6 @@ import (
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 )
 
-var commonAnnotations = map[string]string{
-	"app": "notification",
-}
-
 // FailureInformerReconciler reconciles a FailureInformer object
 type FailureInformerReconciler struct {
 	client.Client
@@ -57,21 +53,21 @@ func (r *FailureInformerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 
 	log.Info("Entered reconcile with " + req.String())
 
-	failureInformer := notifierv1.FailureInformer{}
-	err := r.Get(context.TODO(), req.NamespacedName, &failureInformer)
+	failureInformer := &notifierv1.FailureInformer{}
+	err := r.Get(context.TODO(), req.NamespacedName, failureInformer)
 	if err != nil {
 		log.Error(err, "Can't get failureInformer")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	secret, err := r.getEmailSecret(req.NamespacedName)
+	secret, err := r.getEmailSecret(failureInformer)
 	if err != nil {
 		log.Error(err, "Failed to get email secret")
 		return ctrl.Result{}, nil
 	}
 
 	if secret == nil {
-		err = r.createInitialEmailSecret(req.NamespacedName)
+		err = r.createEmailSecret(failureInformer)
 		if err != nil {
 			log.Error(err, "Failed to create initial email secret")
 		}
@@ -90,8 +86,12 @@ func (r *FailureInformerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *FailureInformerReconciler) getEmailSecret(namespacedName types.NamespacedName) (*corev1.Secret, error) {
+func (r *FailureInformerReconciler) getEmailSecret(notifier *notifierv1.FailureInformer) (*corev1.Secret, error) {
 	secret := corev1.Secret{}
+	namespacedName := types.NamespacedName{
+		Namespace: notifier.ObjectMeta.Namespace,
+		Name:      notifier.ObjectMeta.Name,
+	}
 	err := r.Get(context.TODO(), namespacedName, &secret)
 
 	if k8serror.IsNotFound(err) {
@@ -105,14 +105,21 @@ func (r *FailureInformerReconciler) getEmailSecret(namespacedName types.Namespac
 	return &secret, nil
 }
 
-func (r *FailureInformerReconciler) createInitialEmailSecret(namespacedName types.NamespacedName) error {
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespacedName.Namespace,
-			Name:      namespacedName.Name,
-		},
+func (r *FailureInformerReconciler) createEmailSecret(notifier *notifierv1.FailureInformer) error {
+	secretMeta := metav1.ObjectMeta{
+		Namespace:   notifier.ObjectMeta.Namespace,
+		Name:        notifier.ObjectMeta.Name,
+		Annotations: notifier.GetAnnotations(),
 	}
-	err := r.Create(context.TODO(), &secret)
+	secret := &corev1.Secret{
+		ObjectMeta: secretMeta,
+	}
+	err := ctrl.SetControllerReference(notifier, secret, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	err = r.Create(context.TODO(), secret)
 	if err != nil && !k8serror.IsAlreadyExists(err) {
 		return err
 	}

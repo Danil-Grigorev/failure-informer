@@ -69,6 +69,7 @@ func main() {
 	err = (&controllers.FailureInformerReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("FailureInformer"),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FailureInformer")

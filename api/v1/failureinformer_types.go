@@ -55,6 +55,14 @@ type FailureInformerList struct {
 	Items           []FailureInformer `json:"items"`
 }
 
+var FailureInformerAnnotations = map[string]string{
+	"app": "notifier",
+}
+
 func init() {
 	SchemeBuilder.Register(&FailureInformer{}, &FailureInformerList{})
+}
+
+func (r FailureInformer) GetAnnotations() map[string]string {
+	return FailureInformerAnnotations
 }
