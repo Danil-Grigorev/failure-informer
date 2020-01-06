@@ -42,3 +42,17 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - secret
+  verbs:
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secret/status
+  verbs:
+  - get
+  - watch

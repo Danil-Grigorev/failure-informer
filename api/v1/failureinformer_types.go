@@ -16,6 +16,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,7 +25,7 @@ import (
 
 // FailureInformerSpec defines the desired state of FailureInformer
 type FailureInformerSpec struct {
-	Replicas int    `json:"replicas"`
+	Replicas *int32 `json:"replicas"`
 	Image    string `json:"image"`
 	Email    string `json:"email"`
 }
@@ -63,6 +64,45 @@ func init() {
 	SchemeBuilder.Register(&FailureInformer{}, &FailureInformerList{})
 }
 
+func (r FailureInformer) CreatePodsTemplate() corev1.PodTemplateSpec {
+	podTemplateMeta := metav1.ObjectMeta{
+		GenerateName: r.GetName() + "-",
+		Namespace:    r.GetNamespace(),
+		Labels:       r.GetLabels(),
+		Annotations:  r.GetAnnotations(),
+	}
+	podContainers := corev1.Container{
+		Name:    r.GetName(),
+		Image:   r.GetImage(),
+		Command: []string{"sleep", "1"},
+	}
+	podTemplateSpec := corev1.PodSpec{
+		Containers: []corev1.Container{podContainers},
+	}
+	podTemplate := corev1.PodTemplateSpec{
+		ObjectMeta: podTemplateMeta,
+		Spec:       podTemplateSpec,
+	}
+
+	return podTemplate
+}
+
 func (r FailureInformer) GetAnnotations() map[string]string {
 	return FailureInformerAnnotations
+}
+
+func (r FailureInformer) GetLabels() map[string]string {
+	return r.GetAnnotations()
+}
+
+func (r FailureInformer) GetImage() string {
+	return r.Spec.Image
+}
+
+func (r FailureInformer) GetReplicas() *int32 {
+	return r.Spec.Replicas
+}
+
+func (r FailureInformer) GetEmail() string {
+	return r.Spec.Email
 }

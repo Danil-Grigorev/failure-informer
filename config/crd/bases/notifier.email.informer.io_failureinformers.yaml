@@ -387,13 +387,15 @@ spec:
           properties:
             email:
               type: string
-            label:
+            image:
               type: string
-            namespace:
-              type: string
+            replicas:
+              format: int32
+              type: integer
           required:
+          - replicas
+          - image
           - email
-          - label
           type: object
         status:
           type: object
