@@ -24,9 +24,9 @@ import (
 
 // FailureInformerSpec defines the desired state of FailureInformer
 type FailureInformerSpec struct {
-	Email     string `json:"email"`
-	Label     string `json:"label"`
-	Namespace string `json:"namespace,omitempty"`
+	Replicas int    `json:"replicas"`
+	Image    string `json:"image"`
+	Email    string `json:"email"`
 }
 
 // FailureInformerStatus defines the observed state of FailureInformer

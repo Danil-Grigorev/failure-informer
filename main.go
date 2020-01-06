@@ -21,9 +21,10 @@ import (
 
 	notifierv1 "std/api/v1"
 
-	kapi "k8s.io/api/core/v1"
-
 	"std/controllers"
+
+	corev1 "k8s.io/api/core/v1"
+	betav1extension "k8s.io/api/extensions/v1beta1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -40,7 +41,8 @@ var (
 func init() {
 
 	notifierv1.AddToScheme(scheme)
-	kapi.AddToScheme(scheme)
+	corev1.AddToScheme(scheme)
+	betav1extension.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 

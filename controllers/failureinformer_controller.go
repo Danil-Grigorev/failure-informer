@@ -19,13 +19,22 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	notifierv1 "std/api/v1"
+
+	corev1 "k8s.io/api/core/v1"
+	betav1extension "k8s.io/api/extensions/v1beta1"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 )
+
+var commonAnnotations = map[string]string{
+	"app": "notification",
+}
 
 // FailureInformerReconciler reconciles a FailureInformer object
 type FailureInformerReconciler struct {
@@ -38,12 +47,36 @@ type FailureInformerReconciler struct {
 // +kubebuilder:rbac:groups=notifier.email.informer.io,resources=failureinformers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=pod,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pod/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secret,verbs=get;watch
+// +kubebuilder:rbac:groups="",resources=secret/status,verbs=get;watch
+// +kubebuilder:rbac:groups="extensions",resources=replicaset,verbs=get;list;watch
+// +kubebuilder:rbac:groups="extensions",resources=replicaset/status,verbs=get;list;watch
 
 func (r *FailureInformerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
 	log := r.Log.WithValues("failureinformer", req.NamespacedName)
 
 	log.Info("Entered reconcile with " + req.String())
+
+	failureInformer := notifierv1.FailureInformer{}
+	err := r.Get(context.TODO(), req.NamespacedName, &failureInformer)
+	if err != nil {
+		log.Error(err, "Can't get failureInformer")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	secret, err := r.getEmailSecret(req.NamespacedName)
+	if err != nil {
+		log.Error(err, "Failed to get email secret")
+		return ctrl.Result{}, nil
+	}
+
+	if secret == nil {
+		err = r.createInitialEmailSecret(req.NamespacedName)
+		if err != nil {
+			log.Error(err, "Failed to create initial email secret")
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -51,6 +84,38 @@ func (r *FailureInformerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 func (r *FailureInformerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&notifierv1.FailureInformer{}).
-		For(&corev1.Pod{}).
+		Owns(&corev1.Pod{}).
+		Owns(&corev1.Secret{}).
+		Owns(&betav1extension.ReplicaSet{}).
 		Complete(r)
+}
+
+func (r *FailureInformerReconciler) getEmailSecret(namespacedName types.NamespacedName) (*corev1.Secret, error) {
+	secret := corev1.Secret{}
+	err := r.Get(context.TODO(), namespacedName, &secret)
+
+	if k8serror.IsNotFound(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &secret, nil
+}
+
+func (r *FailureInformerReconciler) createInitialEmailSecret(namespacedName types.NamespacedName) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+	}
+	err := r.Create(context.TODO(), &secret)
+	if err != nil && !k8serror.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
 }
