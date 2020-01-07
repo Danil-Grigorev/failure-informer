@@ -71,9 +71,15 @@ func (r *NotifierReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	_, err = r.getFilteredEvents(notifier)
+	events, err := r.getFilteredEvents(notifier)
 	if err != nil {
 		log.Error(err, "Failed to list Pod related Events")
+		return ctrl.Result{}, nil
+	}
+
+	err = r.notify(events)
+	if err != nil {
+		log.Error(err, "Failed to notify event")
 		return ctrl.Result{}, nil
 	}
 
@@ -129,20 +135,30 @@ func (r *NotifierReconciler) createEmailSecret(notifier *emailv1.Notifier) error
 	return nil
 }
 
-func (r *NotifierReconciler) getFilteredEvents(notifier *emailv1.Notifier) (*[]corev1.Event, error) {
-	filteredEvents := &[]corev1.Event{}
+func (r *NotifierReconciler) getFilteredEvents(notifier *emailv1.Notifier) ([]corev1.Event, error) {
 	capturedEvents := &corev1.EventList{}
 	err := r.List(
 		ctx.TODO(),
 		capturedEvents,
 		client.InNamespace(notifier.GetNamespace()),
-		client.MatchingLabels(emailv1.EventLabelSelector))
+		client.MatchingLabels(map[string]string{NotifyLabel: "true"}))
 	if err != nil {
 		return nil, err
 	}
-	for _, event := range capturedEvents.Items {
-		r.Log.Info(fmt.Sprintf("%#v", event.InvolvedObject))
+
+	return capturedEvents.Items, nil
+}
+
+func (r *NotifierReconciler) notify(events []corev1.Event) error {
+	for _, event := range events {
+		r.Log.Info(fmt.Sprintf("Reason: %v, Message: %#v", event.Reason, event.Message))
+		eventCopy := event.DeepCopy()
+		eventCopy.SetLabels(nil)
+		err := r.Update(ctx.TODO(), eventCopy)
+		if err != nil {
+			return err
+		}
 	}
 
-	return filteredEvents, nil
+	return nil
 }

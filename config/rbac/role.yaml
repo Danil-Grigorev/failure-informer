@@ -7,6 +7,26 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
   - email.notify.io
   resources:
   - notifiers
