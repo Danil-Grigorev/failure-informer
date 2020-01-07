@@ -1,0 +1,7 @@
+version: "2"
+domain: notify.io
+repo: std
+resources:
+- group: email
+  version: v1
+  kind: Notifier
