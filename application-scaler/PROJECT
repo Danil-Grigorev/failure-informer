@@ -1,0 +1,7 @@
+version: "2"
+domain: email.informer.io
+repo: std
+resources:
+- group: notifier
+  version: v1
+  kind: FailureInformer
