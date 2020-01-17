@@ -1,0 +1,8 @@
+apiVersion: email.notify.io/v1
+kind: Notifier
+metadata:
+  name: notifier-sample
+  namespace: test
+spec:
+  # Add fields here
+  email: test@test.com
