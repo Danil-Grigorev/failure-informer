@@ -5,7 +5,7 @@ resources:
 - bases/email.notify.io_notifiers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-patches:
+# patches:
 # [WEBHOOK] patches here are for enabling the conversion webhook for each CRD
 #- patches/webhook_in_notifiers.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
