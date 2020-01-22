@@ -31,7 +31,7 @@ const NotifyPrefix = "%s-notify"
 // NotifierSpec defines the desired state of Notifier
 type NotifierSpec struct {
 	Email   string   `json:"email"`
-	Filters []string `json:"filter"`
+	Filters []string `json:"filters"`
 }
 
 // NotifierStatus defines the observed state of Notifier

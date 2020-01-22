@@ -387,13 +387,13 @@ spec:
           properties:
             email:
               type: string
-            filter:
+            filters:
               items:
                 type: string
               type: array
           required:
           - email
-          - filter
+          - filters
           type: object
         status:
           type: object

@@ -6,5 +6,5 @@ metadata:
 spec:
   # Add fields here
   email: test@test.com
-  filter:
+  filters:
   - BackOff
