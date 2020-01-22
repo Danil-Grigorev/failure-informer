@@ -17,20 +17,15 @@ package controllers
 
 import (
 	ctx "context"
-
-	"regexp"
-
 	"github.com/go-logr/logr"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	emailv1 "std/api/v1"
-
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"regexp"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	emailv1 "std/api/v1"
 )
 
 const (
@@ -60,7 +55,7 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		log.Error(err, "Could not get Event: "+req.String())
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Skip purely informational events
@@ -71,7 +66,7 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	notifiers, err := r.getMatchingNotifiers(event)
 	if err != nil {
 		log.Error(err, "Can't match notifiers for event")
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// No Notifier CRs found in the namespace
@@ -81,9 +76,11 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	for _, notifier := range notifiers {
 		err = r.requestNotify(event, &notifier)
-		if err != nil {
+		if k8serror.IsConflict(err) {
+			return ctrl.Result{Requeue: true}, nil
+		} else if err != nil {
 			log.Error(err, "Error on updating Event with notify label")
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 	}
 

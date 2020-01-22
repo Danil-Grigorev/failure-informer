@@ -16,18 +16,15 @@ limitations under the License.
 package controllers
 
 import (
+	ctx "context"
 	"fmt"
-
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	emailv1 "std/api/v1"
-
-	ctx "context"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 // NotifierReconciler reconciles a Notifier object
@@ -54,13 +51,15 @@ func (r *NotifierReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	events, err := r.getFilteredEvents(notifier)
 	if err != nil {
 		log.Error(err, "Failed to list Pod related Events")
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
-	err = r.notify(events)
-	if err != nil {
+	err = r.notify(notifier, events)
+	if k8serror.IsConflict(err) {
+		return ctrl.Result{Requeue: true}, nil
+	} else if err != nil {
 		log.Error(err, "Failed to notify event")
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	return ctrl.Result{}, nil
@@ -92,13 +91,17 @@ func (r *NotifierReconciler) getFilteredEvents(notify *emailv1.Notifier) ([]core
 	return capturedEvents.Items, nil
 }
 
-func (r *NotifierReconciler) notify(events []corev1.Event) error {
+func (r *NotifierReconciler) notify(notifier *emailv1.Notifier, events []corev1.Event) error {
 	for _, event := range events {
-		r.Log.Info(
-			fmt.Sprintf(`Event occured!
+		r.Log.Info(fmt.Sprintf(`
+		Event occured! Email sent: %v
 		Reason: %v,
 		Message: %#v,
-		Pod: %v`, event.Reason, event.Message, event.InvolvedObject.Name))
+		Pod: %v`,
+			notifier.GetEmail(),
+			event.Reason,
+			event.Message,
+			event.InvolvedObject.Name))
 
 		eventCopy := event.DeepCopy()
 		eventCopy.SetLabels(nil)
