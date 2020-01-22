@@ -388,7 +388,9 @@ spec:
             email:
               type: string
             filter:
-              type: string
+              items:
+                type: string
+              type: array
           required:
           - email
           - filter

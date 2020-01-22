@@ -17,6 +17,7 @@ package v1
 
 import (
 	"fmt"
+	"regexp"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,8 +30,8 @@ const NotifyPrefix = "%s-notify"
 
 // NotifierSpec defines the desired state of Notifier
 type NotifierSpec struct {
-	Email  string `json:"email"`
-	Filter string `json:"filter"`
+	Email   string   `json:"email"`
+	Filters []string `json:"filter"`
 }
 
 // NotifierStatus defines the observed state of Notifier
@@ -67,10 +68,38 @@ func (r Notifier) GetEmail() string {
 	return r.Spec.Email
 }
 
-func (r Notifier) GetFilter() string {
-	return r.Spec.Filter
+func (r Notifier) GetFilters() []string {
+	return r.Spec.Filters
 }
 
 func (r Notifier) GetNotifyLabel() string {
 	return fmt.Sprintf(NotifyPrefix, r.GetName())
+}
+
+func (r Notifier) FilterMatch(input string) (bool, error) {
+	for _, filter := range r.GetFilters() {
+		matched, err := regexp.MatchString(filter, input)
+		if err != nil {
+			return false, err
+		}
+		if !matched {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (r NotifierList) Matching(input string) ([]Notifier, error) {
+	matchedNotifiers := []Notifier{}
+	for _, notifier := range r.Items {
+		match, err := notifier.FilterMatch(input)
+		if err != nil {
+			return nil, err
+		}
+		if match {
+			matchedNotifiers = append(matchedNotifiers, notifier)
+		}
+	}
+	return matchedNotifiers, nil
 }

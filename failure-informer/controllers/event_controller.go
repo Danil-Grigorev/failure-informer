@@ -17,24 +17,20 @@ package controllers
 
 import (
 	ctx "context"
+	emailv1 "std/api/v1"
+
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"regexp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	emailv1 "std/api/v1"
 )
 
-const (
-	InvolvedObjectKind = "involvedobject.kind"
-	Reason             = "reason"
-	Kind               = "kind"
-)
-
-var NotifyLabel = "%s-notify"
+type NotifyEvent struct {
+	Event *corev1.Event
+}
 
 // EventReconciler reconciles a Event object
 type EventReconciler struct {
@@ -49,8 +45,10 @@ type EventReconciler struct {
 func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("event", req.NamespacedName)
 
-	event := &corev1.Event{}
-	err := r.Get(ctx.TODO(), req.NamespacedName, event)
+	notifyEvent := &NotifyEvent{
+		Event: &corev1.Event{},
+	}
+	err := r.Get(ctx.TODO(), req.NamespacedName, notifyEvent.Event)
 	if k8serror.IsNotFound(err) {
 		return ctrl.Result{}, nil
 	} else if err != nil {
@@ -59,11 +57,11 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Skip purely informational events
-	if event.Type != "Warning" {
+	if notifyEvent.Event.Type != "Warning" {
 		return ctrl.Result{}, nil
 	}
 
-	notifiers, err := r.getMatchingNotifiers(event)
+	notifiers, err := r.getMatchingNotifiers(notifyEvent.Event)
 	if err != nil {
 		log.Error(err, "Can't match notifiers for event")
 		return ctrl.Result{Requeue: true}, nil
@@ -75,7 +73,7 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	for _, notifier := range notifiers {
-		err = r.requestNotify(event, &notifier)
+		err = r.requestNotify(notifyEvent, &notifier)
 		if k8serror.IsConflict(err) {
 			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil {
@@ -102,30 +100,19 @@ func (r *EventReconciler) getMatchingNotifiers(event *corev1.Event) ([]emailv1.N
 		return matchedNotifiers, err
 	}
 
-	for _, notifier := range notifierList.Items {
-		matched, err := regexp.MatchString(notifier.Spec.Filter, event.Reason)
-		if err != nil {
-			return matchedNotifiers, err
-		}
-		if matched {
-			matchedNotifiers = append(matchedNotifiers, notifier)
-		}
-	}
-
-	return matchedNotifiers, nil
+	return notifierList.Matching(event.Reason)
 }
 
-func (r *EventReconciler) requestNotify(event *corev1.Event, notify *emailv1.Notifier) error {
-	eventCopy := event.DeepCopy()
+func (r *EventReconciler) requestNotify(event *NotifyEvent, notify *emailv1.Notifier) error {
+	event.Event = event.Event.DeepCopy()
+	event.SetNotifyLabel(notify)
 
-	setNotifyLabel(eventCopy, notify)
-
-	err := ctrl.SetControllerReference(notify, eventCopy, r.Scheme)
+	err := ctrl.SetControllerReference(notify, event.Event, r.Scheme)
 	if err != nil {
 		return errors.Wrap(err, "Failed to set Event referense to Notifier")
 	}
 
-	err = r.Update(ctx.TODO(), eventCopy)
+	err = r.Update(ctx.TODO(), event.Event)
 	if err != nil {
 		return errors.Wrap(err, "Error on updating Event with notify label")
 	}
@@ -133,12 +120,12 @@ func (r *EventReconciler) requestNotify(event *corev1.Event, notify *emailv1.Not
 	return nil
 }
 
-func setNotifyLabel(e *corev1.Event, notify *emailv1.Notifier) {
+func (e NotifyEvent) SetNotifyLabel(notify *emailv1.Notifier) {
 	updatedLabels := make(map[string]string)
-	for label, value := range e.GetLabels() {
+	for label, value := range e.Event.GetLabels() {
 		updatedLabels[label] = value
 	}
 	updatedLabels[notify.GetNotifyLabel()] = "true"
 
-	e.SetLabels(updatedLabels)
+	e.Event.SetLabels(updatedLabels)
 }

@@ -6,4 +6,5 @@ metadata:
 spec:
   # Add fields here
   email: test@test.com
-  filter: Failed.*
+  filter:
+  - BackOff

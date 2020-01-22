@@ -53,11 +53,17 @@ var _ = Describe("Notifier", func() {
 				Name:      "foo",
 				Namespace: "default",
 			}
+			spec := NotifierSpec{
+				Email:   "test@test.com",
+				Filters: []string{"test"},
+			}
 			created = &Notifier{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
-				}}
+				},
+				Spec: spec,
+			}
 
 			By("creating an API obj")
 			Expect(k8sClient.Create(context.TODO(), created)).To(Succeed())
