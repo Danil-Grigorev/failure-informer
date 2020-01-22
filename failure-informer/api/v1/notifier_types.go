@@ -16,15 +16,21 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// NotifyPrefix Label prefix for current Notify resource
+const NotifyPrefix = "%s-notify"
+
 // NotifierSpec defines the desired state of Notifier
 type NotifierSpec struct {
-	Email string `json:"email"`
+	Email  string `json:"email"`
+	Filter string `json:"filter"`
 }
 
 // NotifierStatus defines the observed state of Notifier
@@ -57,22 +63,14 @@ func init() {
 	SchemeBuilder.Register(&Notifier{}, &NotifierList{})
 }
 
-var NotifierAnnotations = map[string]string{
-	"app": "notifier",
-}
-
-var EventLabelSelector = map[string]string{
-	"notify": "true",
-}
-
-func (r Notifier) GetAnnotations() map[string]string {
-	return NotifierAnnotations
-}
-
-func (r Notifier) GetLabels() map[string]string {
-	return r.GetAnnotations()
-}
-
 func (r Notifier) GetEmail() string {
 	return r.Spec.Email
+}
+
+func (r Notifier) GetFilter() string {
+	return r.Spec.Filter
+}
+
+func (r Notifier) GetNotifyLabel() string {
+	return fmt.Sprintf(NotifyPrefix, r.GetName())
 }

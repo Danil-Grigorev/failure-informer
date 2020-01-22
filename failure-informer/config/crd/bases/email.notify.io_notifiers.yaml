@@ -387,8 +387,11 @@ spec:
           properties:
             email:
               type: string
+            filter:
+              type: string
           required:
           - email
+          - filter
           type: object
         status:
           type: object
