@@ -28,10 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type NotifyEvent struct {
-	Event *corev1.Event
-}
-
 // EventReconciler reconciles a Event object
 type EventReconciler struct {
 	client.Client
@@ -45,10 +41,8 @@ type EventReconciler struct {
 func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("event", req.NamespacedName)
 
-	notifyEvent := &NotifyEvent{
-		Event: &corev1.Event{},
-	}
-	err := r.Get(ctx.TODO(), req.NamespacedName, notifyEvent.Event)
+	event := &corev1.Event{}
+	err := r.Get(ctx.TODO(), req.NamespacedName, event)
 	if k8serror.IsNotFound(err) {
 		return ctrl.Result{}, nil
 	} else if err != nil {
@@ -57,11 +51,11 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Skip purely informational events
-	if notifyEvent.Event.Type != "Warning" {
+	if event.Type != "Warning" {
 		return ctrl.Result{}, nil
 	}
 
-	notifiers, err := r.getMatchingNotifiers(notifyEvent.Event)
+	notifiers, err := r.getMatchingNotifiers(event)
 	if err != nil {
 		log.Error(err, "Can't match notifiers for event")
 		return ctrl.Result{Requeue: true}, nil
@@ -73,7 +67,7 @@ func (r *EventReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	for _, notifier := range notifiers {
-		err = r.requestNotify(notifyEvent, &notifier)
+		err = r.requestNotify(event, &notifier)
 		if k8serror.IsConflict(err) {
 			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil {
@@ -103,29 +97,24 @@ func (r *EventReconciler) getMatchingNotifiers(event *corev1.Event) ([]emailv1.N
 	return notifierList.Matching(event.Reason)
 }
 
-func (r *EventReconciler) requestNotify(event *NotifyEvent, notify *emailv1.Notifier) error {
-	event.Event = event.Event.DeepCopy()
-	event.SetNotifyLabel(notify)
+func (r *EventReconciler) requestNotify(event *corev1.Event, notify *emailv1.Notifier) error {
+	event = event.DeepCopy()
+	setNotifyLabel(event, notify)
 
-	err := ctrl.SetControllerReference(notify, event.Event, r.Scheme)
+	err := ctrl.SetControllerReference(notify, event, r.Scheme)
 	if err != nil {
 		return errors.Wrap(err, "Failed to set Event referense to Notifier")
 	}
 
-	err = r.Update(ctx.TODO(), event.Event)
-	if err != nil {
-		return errors.Wrap(err, "Error on updating Event with notify label")
-	}
-
-	return nil
+	return r.Update(ctx.TODO(), event)
 }
 
-func (e NotifyEvent) SetNotifyLabel(notify *emailv1.Notifier) {
+func setNotifyLabel(event *corev1.Event, notify *emailv1.Notifier) {
 	updatedLabels := make(map[string]string)
-	for label, value := range e.Event.GetLabels() {
+	for label, value := range event.GetLabels() {
 		updatedLabels[label] = value
 	}
 	updatedLabels[notify.GetNotifyLabel()] = "true"
 
-	e.Event.SetLabels(updatedLabels)
+	event.SetLabels(updatedLabels)
 }
