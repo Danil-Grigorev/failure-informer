@@ -19,12 +19,11 @@ import (
 	"flag"
 	"os"
 
-	notifierv1 "std/api/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/api/extensions/v1beta1"
+	samplev1beta1 "std/api/v1beta1"
 
 	"std/controllers"
-
-	corev1 "k8s.io/api/core/v1"
-	betav1extension "k8s.io/api/extensions/v1beta1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -40,9 +39,9 @@ var (
 
 func init() {
 
-	notifierv1.AddToScheme(scheme)
+	samplev1beta1.AddToScheme(scheme)
 	corev1.AddToScheme(scheme)
-	betav1extension.AddToScheme(scheme)
+	v1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -66,13 +65,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = (&controllers.FailureInformerReconciler{
+	err = (&controllers.AppScalerReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FailureInformer"),
+		Log:    ctrl.Log.WithName("controllers").WithName("AppScaler"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FailureInformer")
+		setupLog.Error(err, "unable to create controller", "controller", "AppScaler")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

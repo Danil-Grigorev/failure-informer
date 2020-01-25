@@ -1,9 +1,0 @@
-apiVersion: notifier.email.informer.io/v1
-kind: FailureInformer
-metadata:
-  name: failureinformer-sample
-  namespace: test
-spec:
-  replicas: 3
-  image: busybox
-  email: test@mail.com

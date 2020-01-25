@@ -1,7 +1,7 @@
 version: "2"
-domain: email.informer.io
+domain: example.com
 repo: std
 resources:
-- group: notifier
-  version: v1
-  kind: FailureInformer
+- group: sample
+  version: v1beta1
+  kind: AppScaler

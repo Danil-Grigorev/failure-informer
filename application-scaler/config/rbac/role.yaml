@@ -7,9 +7,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - notifier.email.informer.io
+  - sample.example.com
   resources:
-  - failureinformers
+  - appscalers
   verbs:
   - get
   - list
@@ -19,40 +19,26 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - notifier.email.informer.io
+  - sample.example.com
   resources:
-  - failureinformers/status
+  - appscalers/status
   verbs:
   - get
   - update
   - patch
 - apiGroups:
-  - ""
+  - extensions
   resources:
-  - pod
+  - replicasets/status
   verbs:
   - get
-  - list
-  - watch
+  - update
+  - patch
 - apiGroups:
-  - ""
+  - extensions
   resources:
-  - pod/status
+  - replicasets/status
   verbs:
   - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secret
-  verbs:
-  - get
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secret/status
-  verbs:
-  - get
-  - watch
+  - update
+  - patch
