@@ -1,0 +1,9 @@
+apiVersion: sample.example.com/v1
+kind: AppScaler
+metadata:
+  name: appscaler-sample
+  namespace: test
+spec:
+  replicas: 2
+  image: "docker.io/busybox"
+  command: ["sleep", "10000"]

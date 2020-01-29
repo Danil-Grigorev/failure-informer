@@ -26,7 +26,7 @@ kubebuilder init --domain example.com --license apache2
 kubebuilder create api --group deploy --version v1 --kind AppScaler
 ```
 
-This will generate our initial project structure, similar to one hosted in this repo.
+This will generate our initial project structure, similar to one hosted in this repo. Notice initial template for our CR in the `./config/samples` directory. You may edit it at any moment to match the CR specification in the [appscaler_types](./api/v1beta1/appscaler_types.go), and then deploy it in your cluster.
 
 # CR - `example.com/v1.AppScaler`
 
@@ -40,6 +40,19 @@ spec:
   replicas: 2
   image: "docker.io/busybox"
   command: ["sleep", "10000"]
+```
+
+# Executing our cutstom controller code locally
+```bash
+make
+make manifests
+make install
+make run
+```
+
+# Create a sample CR
+```bash
+oc create -f ./samples
 ```
 
 # Sources

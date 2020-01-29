@@ -34,7 +34,7 @@ kubebuilder create api --group email --version v1 --kind Notifier
 
 # Extending existing v1.Event kubernetes resource with our controller
 # From provided options select only the controller scaffolding, as the resource will be already present
-kubebuilder create api --group "" --version v1 --kind Event
+kubebuilder create api --group core --version v1 --kind Event
 ```
 ----------------------
 There are several places, where the code for this workshop will be edited. For better orientation here is an overview:
